@@ -1,10 +1,13 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
@@ -12,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
       - name: Install npm dependencies
         run: npm install
@@ -29,13 +32,16 @@ jobs:
         run: npm run build
 
       - name: Create Android project
-        run: npx cap add android
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
 
       - name: Sync Capacitor
         run: npx cap sync android
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -47,9 +53,20 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: digital-ruble-pwa-mock-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+      - name: Prepare APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk digital-ruble-pwa-mock.apk
+          ls -lh digital-ruble-pwa-mock.apk
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+
+          gh release create "$TAG" \
+            digital-ruble-pwa-mock.apk \
+            --title "Digital Ruble PWA Mock build ${{ github.run_number }}" \
+            --notes "Automatic Android APK build" \
+            --target "${{ github.sha }}" \
+            --latest
