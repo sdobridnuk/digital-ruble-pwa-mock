@@ -1,0 +1,6 @@
+{
+  "appId": "ru.demo.digitalruble",
+  "appName": "Demo Bank",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
